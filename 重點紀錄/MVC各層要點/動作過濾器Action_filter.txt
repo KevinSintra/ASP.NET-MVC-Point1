@@ -1,0 +1,56 @@
+動作過濾器　主要目的為　在一個http的請求真正到MVC的生命週期中 在Controller時，會針對某些Action或是整個Controller做方法開始前中後必要執行的程序
+
+可設定於繼承controller的類別上或是Controller的方法中 都是使用 屬性的設定
+
+[Authorize(Roles ="Admin")]
+    使用者登入權限若不等於該權限則無法進入該方法
+
+[Authorize(Users ="XXX,XXX")]
+    只允許部分帳戶使用該方法
+
+[Authorize]
+    只要登入即可
+
+若設定在Controller的類別上 就是所有方法都需要登入才可使用
+    [AllowAnonymous]
+        可讓有設定該屬性的方法例外方法需要例外
+
+[ValidateAntiForgeryToken]
+    需搭配在VIEW的 @Html.AntiForgeryToken()。兩者合用就能抵擋部分形式的惡意攻擊
+
+[ChildActionOnly]
+    該方法只能透過View來呼叫，不接收使用者自訂網址(url)
+
+自訂動作過濾器 目的是若Controller裏頭有很多Action需要做同樣的事情此時可用此法抽出 :
+
+    需繼承.NET抽象類。因無回傳直可透過 ViewData或者是TempData抑或是Session傳遞資料。
+
+    namespace MyApplication.MyActionFilter
+    {
+        public class MyActionFilter : ActionFilterAttribute
+        {   
+            //方法完成後呼叫
+            public override void OnActionExecuted(ActionExecutedContext filterContext)
+            {
+                base.OnActionExecuted(filterContext);
+            }
+
+            //執行方法前呼叫
+            public override void OnActionExecuting(ActionExecutingContext filterContext)
+            {
+                base.OnActionExecuting(filterContext);
+            }
+
+            //結果執行後呼叫
+            public override void OnResultExecuted(ResultExecutedContext filterContext)
+            {
+                base.OnResultExecuted(filterContext);
+            }
+
+            //執行結果前呼叫
+            public override void OnResultExecuting(ResultExecutingContext filterContext)
+            {
+                base.OnResultExecuting(filterContext);
+            }
+        } 
+    }

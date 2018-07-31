@@ -1,0 +1,60 @@
+View 的頁面執行過程 View  ---> _Layout
+
+@RenderBody()
+    再有主板頁面的情況下，主板頁面可用此關鍵字來決定子頁面的位置。
+
+@RenderSection("具名坑洞名稱",requird: false)
+    具名坑洞可讓主板頁面決定子頁面是否有需要實作某個區塊，若為True的話就是一定要實作出該部分
+
+    子頁面中實作 : 
+        @Section 具名坑洞名稱 {
+            <section class="具名坑洞名稱">
+                <div>....</div>
+            </section>
+        }
+
+@helper 方法名稱
+    像是在C#中宣告方法供各頁面使用 最好是將該方法建立至額外資料夾 並使用部分檢視的頁面建立。
+
+
+View接收Controller傳值得方式 共有三種最基本的 : 
+
+    ViewBag 和 ViewData 使用時機：適合我們當下需要馬上使用的資料，即使用者進入 Action 取得當下時間並返回 View 顯示。
+    TempData 則適合使用在我們需要暫時存放的資料，並透過下個 Request 將資料讀出，雖然他如此方便，但別忘了它的生命週期就僅只有一次的請求。
+
+    @ViewBag.自定義名稱 ="";
+    @TempData[""]="";
+    @ViewData[""]="";
+
+    以上三種都可以傳遞物件給View使用
+
+部分檢視 : 
+    View掛載
+        @Html.Partial("PartialName")
+    Controller回傳
+        return PartialView();
+    View使用Controller回傳的方式 : 類似開啟連結
+        @Html.Action("ControllerName")
+
+Html. 自定義擴充方法 : 
+
+    namespace Ch1_TryMVC.Helpers
+    {
+        //自定義Html擴充方法
+        public static class MyHtmlHelpers
+        {
+            public static MvcHtmlString Img(this HtmlHelper helper, string url,string alternateText,string title)
+            {
+                return MvcHtmlString.Create(string.Format("<img src='{0}',alt='{1}',title='{2}' />",
+                    url, alternateText, title));
+            }
+        }
+    }
+
+    View使用
+
+    @using Ch1_TryMVC.Helpers
+
+    <div>
+        @Html.Img("www.www.www","I is Img","Img")
+    <div>

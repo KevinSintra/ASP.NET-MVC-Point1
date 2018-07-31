@@ -1,0 +1,28 @@
+說明:
+    當一個View設計的過度龐大或某個區塊需要被很多頁面重複使用時，為了避免寫重複的Code，或造成View太過複雜。
+通常，會將一個View中的某幾個部份獨立出來成為Partial View。
+
+語法:
+    @foreach (var item in Model) 
+    {
+        @Html.Partial("_Products", item); // 也可用 Html.RenderPartial("_Products", item); 效果一樣.
+    }
+
+規則:
+    @Html.Partial("partialViewName")
+    @Html.Partial("partialViewName", model)
+    @Html.Partial("partialViewName", ViewDataDictionary)
+    @Html.Partial("partialViewName", model, ViewDataDictionary) // 頁面檔案名稱, Entity 資料, ViewDataDictionary
+
+也可從 Controller 的 Action 回傳部分頁面:
+    public ActionResult TimeNow()
+    {
+        return PartialView(DateTime.UtcNow.AddHours(8));
+    }
+
+    // 部分檢視的頁面程式碼
+    @model DateTime
+    <h2>Current Time : @Model.ToShortTimeString()
+    </h2>
+
+    // 在相對應的頁面上引入 @Html.Action("TimeNow") // Controller Action 的名稱

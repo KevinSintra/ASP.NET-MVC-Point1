@@ -1,0 +1,44 @@
+@html 是MVC中所提供的方法 產生相對應的HTML標籤與元素
+
+1. 
+        @*產生一個隱藏的Input標籤存取當前的欄位名稱與值 供後續修改作業使用*@
+        @Html.HiddenFor(model => model.ID)
+        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+2. 
+
+        <div class="form-group">
+            @*產生一個Lable標籤值是欄位名稱 => <label class="control-label col-md-2">欄位名稱</label>*@
+            @Html.LabelFor(model => model.Name, htmlAttributes: new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @*產生Input標籤並賦予Name => <input class="form-control" name=欄位名稱 typ="text" value="" />*@
+                @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control" } })
+                @*驗證欄位 若有觸發驗證 則啟動*@
+                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+3.
+    @using (Html.BeginForm()) //以Form的方式做資料傳遞
+    {
+        @Html.AntiForgeryToken() //預防惡意的假表單攻擊 Controller 的方法須搭配屬性
+        <div class="form-horizontal">
+            <div class="form-group">
+                <div class="col-md-offset-2 col-md-10">
+                    <input type="submit" value="Create" class="btn btn-default" />
+                </div>
+            </div>
+        </div>
+    }
+
+4. 
+     @Html.DisplayNameFor(model => model.Name) @*取得欄位名稱*@
+     @Html.DisplayFor(model => model.Name) @*取得欄位值*@
+
+5. 
+    @model Ch1_TryMVC.Models.GuestBook @*指定該View的模型結構與資料*@
+    
+    @*用@{}包起來的可以直接使用C#之語法*@
+    @{
+        ViewBag.Title = "Details";
+    }

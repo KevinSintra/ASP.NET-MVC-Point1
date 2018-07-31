@@ -1,0 +1,83 @@
+若使用Entity Framework 建立 資料表，類別有相關注意要點與設定可以使用 : 
+命名空間 
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+note
+1. 若是在.NET 原本就不可為Null的實質類型 不做任何設定的情況下Enity建立的資料庫也為 NOT NULL
+   若需要設定為NULL 須在欄位名稱後加上 '?' =>
+     public int Price? { get; set; };
+
+2. 在Entity Framework中一定要設定主索引鍵 欄位名稱Id為EntityFramework的預設
+3. 在前端的View也會依據相關的設定產生出對應的js防呆
+
+欄位名稱的屬性(Attributes)設定
+
+public class TbStruct
+{
+    [Attributes]
+    public int Id { get; set; };
+}
+
+    [Attributes] => 相關設定 : 
+        [Key] : 該欄位為主索引鍵必須為Int的資料型態
+        [Required] : 不可為 Null
+        [Display(Name = "XXX")] : 此為在View中的模型可以使用的值，方便每個欄位都有固定的名稱
+        [StringLength(3)] : 指定欄位長度 只能等於 3
+        [MaxLength(50)] : 欄位最大寬度為50 只適用於資料型態為 string
+        該屬性設定事告知Entity 這些欄位的值要特殊處理 : 
+            [DatabaseGenerated(DatabaseGeneratedOption.Computed)] : 
+                該欄位的值在資料庫中有預設值，UPD時不異動該資料欄位
+            [DatabaseGenerated(DatabaseGeneratedOption.Identity)] :
+                該欄位需要自動加序號的功能 類似[Key] 但不是主索引鍵
+            [DatabaseGenerated(DatabaseGeneratedOption.None)] : 
+                該欄位雖然是 [Key] 但不讓它自動增加序號
+        [NotMapped] : 欄位不需要建立於資料庫中。可能是特殊屬性供程式內部自用
+        [Range(30, 300,ErrorMessage ="請輸入在預設範圍")] : 數字欄位的範圍做限制
+        [Compare("ColumnNmae")] : 比對兩個欄位值是否相同
+        ※[Remote(多載)] : 將該欄位的值透過Ajax的方式指定到特定方法來驗證 using System.Web.Mvc;
+        [MembershipPassword] : 指定需要輸入高強度的密碼 using System.Web.Security;
+
+    若要建立 1 to N 或 N to N 關聯: 以下只關注重點其於欄位不設立
+    using System.Collections.Generic;
+    namespace Erp.Models
+    {
+        ///以下會產生一對多的情形 : 
+        /// Member 1------->N Order
+
+        public class Member
+        {
+            public virtual ICollection<Order> Order { get; set; } 
+        }
+
+        public class Order
+        {
+            public virtual Member Member { get; set; } 
+        }
+    }
+
+    namespace Erp.Models
+    {
+        ///以下會產生多對多的情形 : 
+        /// Member 1------->N  [MemberAndOrder]  N<------1 Order
+
+        public class Member
+        {
+            public virtual ICollection<Order> Order { get; set; } 
+        }
+
+        public class Order
+        {
+            public virtual ICollection<Member> Member { get; set; } 
+        }
+    }
+
+    NOTE : 使用關聯的好處，若在一對多的情形下如用linq像entity取值時不需要自己建立起關聯查詢，Entity有延時查詢的機制主要關鍵點就是在1toN,NtoN的欄位關鍵字"virtual"
+        EX : 
+            using (Erp.Models.TbEntities db = new Erp.Models.TbEntities())
+            {
+                //使用N的那個表格可直接取得對應關聯資料表的值 用上面的兩個類別當範例
+                var value = db.Order.Member.ColumnName;
+            }
+
+
+

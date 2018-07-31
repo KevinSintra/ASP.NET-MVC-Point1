@@ -1,0 +1,37 @@
+CodeFirst的情況下 當類別的結構異動時 如何更新置資料庫 ?? 請使用套件控制台
+
+NOTE : 該方法為緩和式的異動資料結構。並非暴力式
+    暴力式 不留資料的方法是 :
+        System.Data.Entity.Database.SetInitializer(
+            new System.Data.Entity.DropCreateDatabaseIfModelChanges<Models.Ch1_TryMVCContext>());
+
+步驟 1 : 
+    PM> Enable-Migrations -ContextTypeName 對應的Entity的類別
+        此時會依據當前版本產生一個資料夾兩個檔案 : 
+            1. 資料夾為 Migrations 
+            2. Configuration.cs //為設定檔
+            3. 201706280801228_InitialCreate //當前現況的資料結構
+
+步驟 2 : 
+    PM> Enable-Migrations -ContextTypeName 對應的Entity的類別 -Force
+        開啟覆寫結構
+
+步驟 3 :
+    PM> Add-Migration 新版的名稱
+        依據最新的Entity資料物件建立起新的版本 產生資料 與 步驟1-3相同
+
+步驟 4 : 
+    PM> Update-Database -SourceMigration 新版名稱
+
+完成更新
+
+範例 : 
+    PM> Enable-Migrations -ContextTypeName Ch1_TryMVC.Models.Ch1_TryMVCContext
+    PM> Enable-Migrations -ContextTypeName Ch1_TryMVC.Models.Ch1_TryMVCContext -Force
+    PM> Add-Migration DATACHANGE
+    PM> Update-Database -SourceMigration DATACHANGE
+
+若要預防程式不小心異動資料庫中的資料結構可以於 Global.asax 中新增該行程式碼
+    於 Application_Start() 的方法中新增:
+        System.Data.Entity.Database.SetInitializer<Models.Ch1_TryMVCContext>(null);
+

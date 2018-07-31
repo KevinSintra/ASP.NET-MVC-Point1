@@ -1,0 +1,608 @@
+這是在最後一次MVC的練習中 學到的各種方法 或注意要點 : 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+View && Controller 中的使用要點 : 
+    .ASP MVC 提供了三種模式可供 Controller 儲存任何物件的技術給View : 
+        ViewBag["Name"] = ob; 等同 ViewBag.Name = ob;
+        
+        ViewData["Name"] = ob;
+
+        TempData["Name"] = ob;
+
+    ViewBag ViewData 只在當前 Action 中有效，生命週期和 View 相同；
+    TempData 的資料至多只能經過一次Controller傳遞，並且每個元素至多只能被訪問一次，訪問以後，自動被刪除。
+
+    那View要如何使用呢?? 
+    @{
+        ViewBag["Name"]...;
+        ViewBag.Name....;
+        TempData["Name"]...;
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+若再VIEW使用 下拉式選單 :
+
+    第一種模式 : 使用MVC提供的 利用Controller創建一個SelectList的物件 後給View取得
+
+    public class ProductsController : Controller
+    {
+        ...
+        private Models.Interface.ICategoryRepository _categoryRepository;
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Create([Bind(Include = "ProductID,ProductName,CategoriesCategoryID")] Products products)
+        {
+            if (ModelState.IsValid)
+            {
+                this._productRepository.Create(products);
+                return RedirectToAction("Index");
+            }
+            //再此次的回應中 再 ViewBag 存取下拉是選單的物件
+            ViewBag.CategoriesCategoryID = new SelectList(
+                this._categoryRepository.GetAll(), "CategoryID", "CategoryName", products.CategoriesCategoryID);
+            return View(products);
+        }
+        ...
+    }
+
+    VIEW -->
+    @using (Html.BeginForm()) 
+    {
+        @Html.AntiForgeryToken()        
+        <div class="form-horizontal">
+            <div class="form-group">
+                @Html.LabelFor(model => model.CategoriesCategoryID, "CategoriesCategoryID", htmlAttributes: new { @class = "control-label col-md-2" })
+                <div class="col-md-10">
+                    //這裡就是重點!!
+                    @Html.DropDownList("CategoriesCategoryID", null, htmlAttributes: new { @class = "form-control" })
+                    @Html.ValidationMessageFor(model => model.CategoriesCategoryID, "", new { @class = "text-danger" })
+                </div>
+            </div>
+        </div>
+    }
+
+    第二種模式 : Html5自定義--->
+        注意要點 是主體的id 與 內容物的 aria-labelledby 屬性 需對應
+
+    @*取得當前購物車內容*@
+    @*這是部分VIEW MVC的View可透過這個功能 在頁面上的某個區塊新增一個自訂功能*@
+    @{
+        Layout = null;
+        var currentCart = Carts.Models.UserCart.Operation.GetCurrentCart();
+    }
+
+    //先創建dropdownlist 主體 (未展開之前)
+    <a id="CartDropDown" class="dropdown-toggle" data-toggle="dropdown">
+        @String.Format("共 {0} 元 ({1})", currentCart.TotalAmount, currentCart.Count)
+        <span class="caret"></span>
+    </a>
+
+    //創建內容物
+    <ul class="dropdown-menu" role="menu" aria-labelledby="CartDropDown">
+        @if (currentCart.Count > 0)
+        {
+            foreach (var cartItem in currentCart)
+            {
+                <li>
+                    <a>
+                        <spen>@cartItem.Name 價錢: @cartItem.Price 元 X @cartItem.Quantity</spen>
+                        <span class="btn btn-danger" onclick="RemoveForCart(@cartItem.Id)">X</span>
+                    </a>
+                </li>
+            }
+            <li class="divider"></li>
+            <li>
+                <div id="CartButtons">
+                    <a class="btn btn-success text-center" href="@Url.Action("Index","Order",new { })">結帳去</a>
+                    <a class="btn btn-danger text-center" onclick="ClearCart()">清空購物車</a>
+                </div>
+            </li>
+        }
+        else
+        {
+            <li><a class="btn btn-default text-center" href="#">購物車內無任何商品</a></li>
+        }
+    </ul>
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+若需要測試性的程式碼可以包在#if DEBUG ..... #endif  之中
+
+    C#有兩種執行模式 DEBUG 與 Release 兩個執行模式 若有測試性程式碼可包於
+    #if DEBUG
+        your code....
+    #endif
+    包含在裡面的程式碼只有用 DEBUG 的執行模式時才會被執行
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Respository Patten 資料倉儲模式 : 
+    這個設計模式很適合用於 MVC 中的 Controller 與 ORM 之間。降低 耦合性 && 重複的程式碼。
+
+    概念是 : 
+        先建立起一個通用的介面 後建立一個實作該介面的通用類別類別
+            該介面應只有最基本的 新、刪、修、讀 的方法。且使用泛行已達到通用目的。
+                且該介面應繼承 IDisposable 的介面 規範實作釋放資源的方法。
+
+        該實作通用類別應也使用泛型。
+
+        有了通用的主體架構後，因為每個Model對於資料的類別不可能都是只有這基本的 新、刪、修、讀，
+        那若有個類別有需要特別的 讀 該怎麼做呢?? 為了達到單一職責的約束。
+            應建立 Model資料類別 對應的介面 且繼承通用介面後裡面規範著 特殊的 讀 方法。
+
+            後續實作該介面的類別 應繼承通用類別後，實作特殊的 讀 方法。
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MVC 使用Form部分POST : 
+    @*此時是使用區域性的Form傳遞資料*@
+    @using(Html.BeginForm("AddComment","Home",FormMethod.Post,new { }))
+    {
+        @Html.HiddenFor(pdId=> pdId.Id)
+        @Html.TextBox("content")
+        <input type="submit" value="留言" class="btn btn-default" />
+    }
+    @*此方法可以POST回局部的FORM*@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+建立EntityFrameWork的連線字串 : 
+    static private string buildConnectString()
+    {
+    SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+    builder.DataSource = @".\SQLEXPRESS";
+    builder.ApplicationName = "";
+    builder.InitialCatalog = "AdventureWorksLT";
+    builder.IntegratedSecurity = true;
+    builder.PersistSecurityInfo = true;
+
+    EntityConnectionStringBuilder entBuilder = new EntityConnectionStringBuilder();
+    entBuilder.Provider = "System.Data.SqlClient";
+    entBuilder.ProviderConnectionString = builder.ConnectionString;
+    entBuilder.Metadata = @"res://AdventureWorksLT.Model/AdventureWorksLT.csdl|res://AdventureWorksLT.Model/AdventureWorksLT.ssdl|res://AdventureWorksLT.Model/AdventureWorksLT.msl";
+
+    return entBuilder.ConnectionString;
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+使用使用者當前網址建立出相對Url : 
+    // 使用 UriBuilder 類別 對當前要求的網址 當成是基底網址後 再增加一個 路徑 與 參數
+    // 此種方法是使用相對路徑若未來路徑改變 並不會影響信件中的網址找不到家
+    // 此法需在Conrtoller中因為需使用 Request.Url MVC中所提供的方法屬性
+    var auth_url = new UriBuilder(Request.Url) { //當前網址 Request.Url
+        Path = Url.Action("ValidateRegister", new { id = member.AuthCode }),
+        Query = ""
+    };
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+SHA512 加密 : 
+    using System.Security.Cryptography;//這個是針對加密所需的命名空間
+    using System.Text; //字元轉換
+     //將密碼加鹽(Salt)後進行雜湊演算並儲存以提升會員密碼安全性 此加密為不可逆的雜湊運算
+     void SaltMethod()
+     {
+        string password = "asd234";
+        string passBySha512="";
+        SHA512 sha512 = new SHA512CryptoServiceProvider();//建立一個SHA512
+        byte[] source = Encoding.Default.GetBytes(password);//將字串轉為Byte[]
+        byte[] crypto = sha512.ComputeHash(source);//進行SHA512加密
+        passBySha512 = Convert.ToBase64String(crypto);//把加密後的字串從Byte[]轉為字串
+     }
+            
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+using System.Net.Mail;
+using System.Text;
+寄信與驗證 :
+    NOTE: 
+        須注意當成smtpServer的信箱安全性是否需要調整，否則會導致該服務無法使用該信箱來寄信。
+
+        信件範本(MemberRegisterEmailTemplate.htm)：
+        <!DOCTYPE html>
+        <!--此為信件內容範本-->
+        <!--供註冊過程中寄發Email給註冊會員完成最後步驟使用-->
+        <html>
+        <body>
+            <h1>會員註冊確認信</h1>
+            <p>親愛的 {{Name}} 您好 </p>
+            <p>
+                由於您在 {{RegisterOn}} 註冊成員本站會員，為了完成後續程序請您典籍以下連結以確認您的Email地址是有效的 : 
+                <br />
+                <a href="{{AUTH_URL}}" target="_blank">{{AUTH_URL}}</a>
+            </p>
+            <p>謝謝!</p>
+            <p>[MVC電子商務]-Kevin</p>
+        </body>
+        </html>
+
+    會員模型 : 
+        public class Member
+        {
+            [Key]
+            public int Id { get; set; }
+
+            [DisplayName("會員帳號")]
+            [Required(ErrorMessage ="請輸入 Email 地址")]
+            [Description("此處直接用 Email 當登入帳號")]
+            [MaxLength(250,ErrorMessage ="Email 長度不可大於250字")]
+            [DataType(DataType.EmailAddress),EmailAddress(ErrorMessage = "請輸入正確的Email格式")]
+            [Remote("CheckDup","Member",HttpMethod ="POST",ErrorMessage =
+                "您輸入的Email已經有人註冊過")]//告訴MVC該欄位使用Ajax方式驗證
+            public string Email { get; set; }
+
+            [DisplayName("會員密碼")]
+            [Required(ErrorMessage ="請輸入密碼")]
+            [StringLength(250)]
+            [Description("密碼將加密後運算")]
+            [DataType(DataType.Password),PasswordPropertyText]
+            [MembershipPassword(ErrorMessage ="密碼請包含特殊字元 如: ~ @ /")]
+            [Remote("CheckPwdLength", "Member", HttpMethod = "POST", ErrorMessage =
+                "密碼長度請介於 6~12 個字元")]//告訴MVC該欄位使用Ajax方式驗證
+            public string Password { get; set; }
+
+            [DisplayName("中文姓名")]
+            [Required(ErrorMessage ="請輸入中文姓名")]
+            [MaxLength(5,ErrorMessage ="姓名不可超過五個字")]
+            [Description("這裡對外國人不友善,請隨便取個中文名 Ex: 小名")]
+            public string Name { get; set; }
+
+            [DisplayName("網路暱稱")]
+            [Required(ErrorMessage ="請輸入暱稱")]
+            [MaxLength(10,ErrorMessage ="暱稱不可超過10個字")]
+            public string NickName { get; set; }
+
+            [DisplayName("註冊時間")]
+            public DateTime RegisterOn { get; set; }
+
+            [DisplayName("會員啟用認證碼")]
+            [MaxLength(36)]
+            [Description("當前AuthCode 等於null 表示此會員已通過 Email有效性驗證")]
+            public string AuthCode { get; set; }
+
+            //與訂單呈現 1 to N 的關係
+            public virtual ICollection<OrderHeader> OrderHeaders { get; set; }
+        }
+
+    寄信: 
+        private void SendAuthCodeToMember(Member member)
+        {
+            //使用信件範本
+            string mailBody = System.IO.File.ReadAllText(Server.MapPath(
+                "~/App_Data/MemberRegisterEmailTemplate.htm"));
+            //定義樣本中變數的值
+            mailBody = mailBody.Replace("{{Name}}", member.Name);
+            mailBody = mailBody.Replace("{{RegisterOn}}", member.RegisterOn.ToString("F"));
+            //使用 UriBuilder 類別 對當前要求的網址 當成是基底網址後 再增加一個 路徑 與 參數
+            //此種方法是使用相對路徑若未來路徑落改變 並不會影響信件中的網址找不到家
+            var auth_url = new UriBuilder(Request.Url) {
+                Path = Url.Action("ValidateRegister", new { id = member.AuthCode }),
+                Query = ""
+            };
+            mailBody = mailBody.Replace("AUTH_URL", auth_url.ToString());
+            //開始寄信 使用 Gmail
+            try
+            {
+                //使用smtp服務
+                SmtpClient smtpServer = new SmtpClient("smtp.gmail.com", 587);
+                //寄件者的驗證 帳號 密碼
+                smtpServer.Credentials = new System.Net.NetworkCredential(
+                    "kevin79713Pro", "~ko1KO1~");
+                //建立C# 供SmtpClient類別 所需要的資訊
+                MailMessage mail = new MailMessage();
+                mail.From = new MailAddress("kevin79713Pro@gmail.com");//寄件人位址                
+                mail.To.Add(member.Email);//收件人信箱
+                mail.Subject = "[MVC電子商務網站]會員註冊確認信通知";//信件標題                
+                mail.Body = mailBody;//信件內容
+                mail.IsBodyHtml = true;//信件內容採用Html的格式
+                smtpServer.EnableSsl = true;
+                smtpServer.Send(mail);//使用smtp服務寄信
+            }
+            catch (Exception ex)
+            {//TODO: 若寄件失敗
+                throw ex;
+            }
+        }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+使用類別管理Session並儲存物件提供序列化並實作 IEnumerable<>
+
+    Model類別 : 
+    //可序列化 : 序列化是可將記憶體中的資料或物件轉成 二進位與XML的文字檔，
+    //目的就是要讓物件可以像資料一樣傳輸，與可以透過文字檔來觀察其內容。
+    //該類別提供了使用者購物車內單一商品的屬性
+    [Serializable]
+    public class CartItem
+    {
+        //商品編號
+        public int Id { get; set; }
+
+        //商品名稱
+        public string Name { get; set; }
+
+        //商品購買時價格
+        public decimal Price { get; set; }
+
+        //商品購買數量
+        public int Quantity { get; set; }
+
+        //商品圖片來源
+        public string DefaultImgURL { get; set; }
+
+        //商品小計算
+        public decimal Amount
+        {
+            get
+            {
+                return this.Price * this.Quantity;
+            }
+        }
+    }
+
+    依據模型類別產生需使用的方法等 : 
+    //為使用者的當前購物車
+    [Serializable]
+    public class Cart : IEnumerable<Models.UserCart.CartItem> 
+    {
+        //使用List<>管理購物車內的複數商品
+        private List<Models.UserCart.CartItem> _cartItems;
+
+        public Cart()
+        {
+            this._cartItems = new List<CartItem>();
+        }
+
+        //取得購物車內容數量
+        public int Count {
+            get { return this._cartItems.Count; }
+        }
+
+        //購物車新增一筆商品
+        public bool AddProcdut(int procdutId)
+        {
+            var findItem = this._cartItems.Where(item => item.Id == procdutId).Select(s => s).FirstOrDefault();
+            //default()若為參考型別則回傳Null
+            if (findItem == default(Models.UserCart.CartItem))
+            {//若找不到該物件則新增
+                using (Models.CartsEntities db = new CartsEntities())
+                {
+                    var product = db.ProductSet.Where(pd => pd.Id == procdutId).Select(s => new CartItem() { Id = s.Id, Name = s.Name, Price = s.Price, Quantity = 1, DefaultImgURL = s.DefaultImgURL }).FirstOrDefault();
+                    if (product != default(Models.UserCart.CartItem)) { this._cartItems.Add(product); }
+                }
+            }
+            else findItem.Quantity += 1;
+            return true;
+        }
+
+        //購物車移除一筆商品
+        public bool RemoveProduct(int productId)
+        {
+            var findItem = this._cartItems.Where(item => item.Id == productId).Select(s => s).FirstOrDefault();
+            if (findItem != default(Models.UserCart.CartItem))
+            {
+                this._cartItems.Remove(findItem);
+            }
+            return true;
+        }
+
+        //清空購物車
+        public bool ClearCart()
+        {
+            this._cartItems.Clear();
+            return true;
+        }
+
+        //取得全商品總價
+        public decimal TotalAmount {
+            get {
+                decimal totalPrice = 0.0m;
+                this._cartItems.ForEach(item => totalPrice += item.Amount);
+                return totalPrice;
+            }
+        }
+
+        //創建OrderDetial的Entity模型 ，並與購物車內資料連結
+        public List<OrderDetail> ToOrderDetailList(int paraOrderId)
+        {
+            List<OrderDetail> orderDetialList = new List<OrderDetail>();
+            foreach (var ob in this)
+            {
+                orderDetialList.Add(new OrderDetail {
+                    OrderId = paraOrderId,
+                    Name = ob.Name,
+                    Price = ob.Price,
+                    Quantity = ob.Quantity
+                });
+            }
+            return orderDetialList;
+        }
+
+        #region IEnumerator 實作介面方法
+        public IEnumerator<CartItem> GetEnumerator()
+        {
+            //使用集合自身的方法
+            return this._cartItems.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return this._cartItems.GetEnumerator();
+        }
+        #endregion
+    }
+
+    using System.Web.Services;
+    調用購物車 : 
+    //操作購物車的類別 使用Session 序列化 Cart物件並存取
+    public static class Operation
+    {
+        [WebMethod(enableSession: true)] //啟用session
+        public static Models.UserCart.Cart GetCurrentCart() //取得Session中的Cart物件
+        {
+            //當前網頁若存在
+            if (HttpContext.Current != null)
+            {
+                //若當前網頁 Session["Cart"] 不存在時
+                if (HttpContext.Current.Session["Cart"]==null)
+                {
+                    var ob = new Models.UserCart.Cart();
+                    HttpContext.Current.Session["Cart"] = ob;                   
+                }
+                return (HttpContext.Current.Session["Cart"]) as Cart;
+            }
+            else
+            {
+                //使用指定錯誤訊息顯示
+                throw new InvalidOperationException("System.WebHttp.Context.Current 不存在 請檢察");
+            }
+        }
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+AutoMap : 
+    自動轉換模型 需使用AutoMap的套件
+
+    Entity 的 Model 類別如下: 
+        public partial class Post
+        {
+            public int Id { get; set; }
+            public string Title { get; set; }
+            public string PostContent { get; set; }
+            public System.DateTime CreateDateTime { get; set; }
+            public Nullable<System.DateTime> LastModifyDateTime { get; set; }
+        }
+
+    View 的 ViewModel 類別如下 : 
+        public class IndexViewModel
+        {
+            public int Id { get; set; }
+            public string Title { get; set; }
+            public string PostContent { get; set; }
+        }
+
+    Controller中 : 
+        public ActionResult Index()
+        {
+            ////在沒有AutoMap的輔助的Code
+            ////List<IndexViewModel> viewModel = new List<IndexViewModel>(); 
+            ////foreach (var item in db.Post.ToList())
+            ////{
+            ////    viewModel.Add(new IndexViewModel()
+            ////    {
+            ////        Id = item.Id,
+            ////        PostContent = item.PostContent,
+            ////        Title = item.Title
+            ////    });
+            ////}
+            ////return View(viewModel);
+
+            //使用AutoMap的Code
+            // 定義Post是來源的Class而IndexViewModel是最後結果
+            //Mapper.CreateMap<Post, IndexViewModel>();
+             
+            // 把List<Post>轉成List<IndexViewModel>
+                //var viewModel2 = Mapper.Map<List<IndexViewModel>>(db.Post.ToList());
+            // 另一種方式 AutoMapper QuerableExtension
+                //var viewModel2 = (db.Post.Project().To<IndexViewModel>()).ToList();
+            //return View(viewModel2);
+
+
+
+            //需求變更時 
+            //假設 IndexViewModel 新增一個欄位 public double HowManyDayPass { get; set; }
+            Mapper.CreateMap<Post, IndexViewModel>().ForMember(member => member.HowManyDayPass, 
+            opt => opt.MapFrom(x => x.LastModifyDateTime == null ? 
+                (DateTime.Now - x.CreateDateTime).TotalDays : 
+                (x.LastModifyDateTime.Value - x.CreateDateTime).TotalDays));
+            
+            //var viewModel2 = Mapper.Map<List<IndexViewModel>>(db.Post.ToList());
+            var viewModel2 = (db.Post.Project().To<IndexViewModel>()).ToList();
+
+            return View(viewModel2);
+        }
+
+AutoMap新版使用方式 : 
+    static TViewModel_2 ConvertModelToModel<TSource_1, TViewModel_2>(TSource_1 list)
+    {
+        // 初始化設定
+        Mapper.Initialize(cfg =>
+        {
+            cfg.CreateMissingTypeMaps = true;
+            cfg.CreateMap<TSource_1, TViewModel_2>().ReverseMap(); //可反轉 
+        });
+        Mapper.Configuration.AssertConfigurationIsValid();
+     
+        // 把資料帶入
+        var converted = Mapper.Map<TViewModel_2>(list);
+        return converted;
+    }
+
+    兩種模式 一種事會更改原模型資料 另一種 是 不更改原資料的 產生一個新的模型給你
+
+    第一種 修改資料模型 : 
+
+        假設 現況有 Model && ViewModel 這兩個 模型對應
+
+        var cfg = new MapperConfigurationExpression(); // 建立設定
+        cfg.CreateMap<ViewModel1, Model1>(); // 對應 <來源,欲修改> 一定要依照此規則
+        Mapper.Initialize(cfg);
+        Mapper.Map(ViewModel, Model); // 此時 AutoMap 將使用 ViewModel 修改 Model 的資料
+
+    第二種 不修改模型資料的 : 
+        假設 現況有 Model && ViewModel 這兩個 模型對應
+
+        var cfg = new MapperConfigurationExpression(); //建立設定
+        cfg.CreateMap<ViewModel1, Model1>(); //對應 <來源,欲修改> 一定要依照此規則
+        Mapper.Initialize(cfg);
+
+        var converted = Mapper.Map<Model>(ViewModel); // 依據 ViewModel的資料 建立出 <Model>型別的物件
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+在有使用通用型的Repository下 : 
+
+    說明: 
+        可以使用Model底下的類別(TB)取得對應的 Repository<T> 的實例
+
+    使用重點 : 
+        Hashtable 雜湊表類別
+        typeof(T) 取得類型型別
+        Activator 使用型別建立出實例
+            關於建立實體大致可以分成三種方式 : 
+            https://douduck08.wordpress.com/2017/02/01/the-effectiveness-of-three-kinds-of-creating-methods-of-class/
+
+    public class EFUnitOfWork : IUnitOfWork
+    {
+        //對應的EnityORM物件
+        private readonly DbContext _context;
+
+        //雜湊表
+        private Hashtable _repositories = null;
+
+        public EFUnitOfWork(DbContext context)
+        {
+            this._context = context;
+        }
+
+        public IRepository<T> Repository<T>() where T : class
+        {
+            if (this._repositories == null) this._repositories = new Hashtable();
+
+            //取得泛型中的類型型態的名稱
+            var type = typeof(T).Name;
+
+            //雜湊表中找不到對應的類型時 創立 Key 儲存 T 類型，Value 儲存 對應的實體
+            if (!this._repositories.ContainsKey(type))
+            {
+                //取得通用的REPOSITORY類型
+                var repositoryType = typeof(EFGenericRepository<>);
+
+                //使用 EFGenericRepository類型 與外部的傳遞的泛型 建立出對應的實體，
+                //最後傳遞 EFGenericRepository 建構子所需的參數
+                var repositoryInsetance = Activator.CreateInstance(repositoryType.MakeGenericType(
+                    typeof(T)), this._context);
+
+                //儲存型別名稱 與對應的實例 到雜湊表之中
+                this._repositories.Add(type, repositoryInsetance);
+            }
+            //將雜湊表中的Object取出 並 轉型
+            return (this._repositories[type] as IRepository<T>);
+        }
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////

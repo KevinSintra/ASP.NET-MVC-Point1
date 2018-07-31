@@ -1,0 +1,59 @@
+    @*下面的AJAX是一個物件，設定初始值後將給MVC中的Ajax方法做取用
+        OnSuccess 是Ajax傳輸成功後將執行哪一個js的方法，OnFailure 則是傳輸失敗
+        Confirm 跳出談話視窗讓使用者做確認。 HttpMethod 此次的Ajax使用何種方式傳遞資料
+    *@
+    @{
+        ViewBag.Title = "Index";
+        var ajaxOption = new AjaxOptions() {
+            OnSuccess = "RemoveCartSuccess",
+            OnFailure = "RemoveCartfailure",
+            Confirm = "確定從購物車移除此商品??",
+            HttpMethod = "Post"
+        };
+    }
+    @section scripts{
+        @Scripts.Render("~/bundles/jqueryval")
+        <script>
+            function RemoveCartSuccess() {
+                alert('成功移除購物車商品');
+                location.reload();
+            }
+            function RemoveCartfailure(xhr) {
+                alert('移除購物車商品錯誤(HTTP狀態碼: ' + xhr.status + ')');
+            }
+        </script>
+    }
+
+    @using (Html.BeginForm("UpdateAmount", "Cart"))
+    {
+        <table class="table">
+            <tr>
+                <th>
+                    @Html.DisplayNameFor(model => model.Product.Name)
+                </th>
+            </tr>
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Product.Name)
+                </td>
+                @*此行是使用Ajax的回傳 第二個參數是輸入已建立好的Ajax物件*@
+                @Ajax.ActionLink("刪除", "RemoveCart", new { productId = item.Product.Id }, ajaxOption)
+            <tr>
+         </table>
+    }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@* 使用TempData儲存 後讀取判斷 *@
+@section Scripts{
+    @Scripts.Render("~/bundles/jequeryval")
+    @*若驗證不通過則秀出TempData的訊息 則跳出內容使用Javascript的方式進行編碼 *@
+    @if (TempData["LastTempMessage"] != null)
+        {
+            <script>
+                alert('@HttpUtility.JavaScriptStringEncode(
+                      Convert.ToString(TempData["LastTempMessage"]))');
+            </script>
+        }
+    }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

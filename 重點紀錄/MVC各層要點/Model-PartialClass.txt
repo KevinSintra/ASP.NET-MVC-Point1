@@ -1,0 +1,21 @@
+說明: 
+    在 EF 中, 若使用 DbFirst 由資料庫端取得 Entity 的物件, 若有建立一些驗證屬性, 當下次資料結構異動時更新會重製原先的 Class.
+此時 partial 修飾詞就很好用.
+
+
+EX:
+
+    [MetadataType(typeof(ProductMetaData))] // 原先 Entity 的類別
+    public partial class ProductMetaData
+    {
+    }
+
+    // 為了放置自定義驗證程式碼而建立的類別
+    public partial class ProductMetaData
+    {
+        [Required]
+        public int Id { get; set; }
+
+        [StringLength(50, ErrorMessage = "商品名稱不可大於50個字")]
+        public string ProductName { get; set; }
+    }

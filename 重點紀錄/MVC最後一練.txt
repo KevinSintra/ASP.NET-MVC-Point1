@@ -1,0 +1,128 @@
+20170706 Start 
+
+    說明: 此紀錄是在實作了兩次MVC與物件導向與設計模式之探討後實作了網路上一篇範例的整個過程
+
+    開發情境: 
+        1. 使用了Visual studio 2017 裡的 MVC 專案 (無驗證進行開發)。
+        2. ADO.NET Entity Framework 的模式下開發
+
+20170706 : 
+    使用以上情境
+    再Sql server 建立該專案的資料庫 FinalMvcTestDatabase
+    先建立一個ORM的模型，使用 ADO.NET Entity Framework 後再設計視窗新增資料表後對應，最後由模型產生資料庫
+        資料表有兩個 Categories && Products 最後按下建置專案
+    由ASP.NET自動產生對應的Controller && View
+
+    以上建置完成後 從Controller 可以看的出來 重複的程式碼非常多。 因此需要把有關ORM的程式碼給抽出來。
+        Controller 去依賴  Repository 的介面
+        Repository Pattern 主要是一個資料表就要建立一個介面與對應的實作。以達到關注點分離
+
+20170707 : 
+    建立 IProductRepository && ICategoryRepository 介面 並都額外繼承了 IDisposable 介面
+        讓實作類別也需要實作 IDisposable 介面裡的釋放資源的方法
+
+    建立 ProductRepository && CategoryRepository 實作類別 實作了介面所規範的方法
+
+    在對應的Controller中 使用對應的 介面 並實例 實作介面
+        private IProductRepository _poductRepository = new ProductRepository();
+
+        用這種法則 可以降低Controller與實作介面的相依姓
+
+    修改了MVC原生建立的Controller 的程式碼
+
+    以上建立完成後會發現 
+        1. IProductRepository && ICategoryRepository  一模一樣
+        2. ProductRepository && CategoryRepository  幾乎一樣
+        因為若非通用型的倉儲模式是很沒有彈性的!!
+        若需要達成"通用型"的必須使用 泛型介面、類別、方法。且對EF的物件必須更加了解!!
+            EF的物件 之前使用的方式都是要指定TB 若要達成參數傳遞不變的情況下 要如何得知該使用哪個TB?
+            EF提供了 Set<TEntity>() 與 Entry<TEntity>() 兩種方式 只要告知模型類別即可傳回對應的TB方法!!
+
+        所以為了降低重複的程式碼 又將以上類別再度抽出 建立通用型的 資料倉儲設計(Repository) : 
+        建立 IRepository<TEntity> 通用型介面
+
+        建立 GenericRepository<TEntity> 實作類別
+
+        最後在修改Controller中部份的程式碼
+
+20170710 :
+    針對 Category && Product 這兩個有關資料的Model類別，裡要有特殊額外處理的方法建立出對應的介面與實作
+        為什麼不寫在通用裡而是額外劃分出來? 這是單一職責的問題，雖說在結構上看起來複雜了一些但大大減少了
+        程式碼的重複性與內聚性!!
+
+        建立 ICategoryRepository && IProductRepository 兩個介面並都繼承 IRepository<> 達到組合效果
+
+        建立 CategoryRepository && ProductRepository 兩個實作類別並都繼承 GenericRepository<>達到組合效果
+
+        最後在修改Controller中的程式碼 以 ICategoryRepository 來宣告。以 IProductRepository 來實例化。
+
+    把Model層整層抽出來放置於專門管理Model層的專案(.Net Framework類別庫)下。
+
+        今天再試著把原本的內容部屬的過程 發現問題點。
+            1. 若不是Code First 的方式，Model 類別 與 資料表 的名稱可能會跟在原先建立的不一樣。
+            2. 命名空間需要再重新檢查。
+            3. 放置在原本專案下的Bin下的資料 *.dll && *.dbp 這兩類型的檔案FOR原本專案的資料須刪除
+            4. WebConfig的連線字串需與 新建立的專案裡的 連線字串相符。
+            5. 必須小心翼翼地修改欲修改的地方。
+            6. 若是修改專案名稱 最好是能在在專案右鍵點選屬性後一次性修改名稱。
+            7. 檢查個專案類別中的命名空間 是否如當初規劃的。
+            8. 網頁型的專案 需加入 模型專案的參考
+
+        專案命名規則 : 應遵循以下規則
+            FOR 網頁要 : 專案名稱.Web
+            FOR 資料模型要 : 專案名稱.Models
+
+        經果以上大幅度修改
+            最後可用原專案搭配著新建立的模型專案來取得資料。!! 抽出Model層至其他專案耗時約1小時左右
+
+20170711 :
+    建立Service層 : 
+        以前的商業邏輯可能會直接包含於當前那個網頁或是App，須建立類別來取值來做判斷後存取資料。
+        所以以前的商業邏輯層包含了CRUD之外還有商業邏輯，在MVC中應該要把CRUD與商業邏輯層在拆開來。
+        在MVC中我們或許會寫在Controller中，這樣會導致Controller除了要控制流程外還要做判斷喪失了單一職責。
+        那我們之前建立的Repository層的通用介面與類別後，又繼續寫了各個Model的類別需要額外處理的介面與方法來擴充通用。    
+    
+    那Service層就是要來取代針對各個Model可能要有額外的處理判斷後做新刪修!!
+    也就是說整體架構如下 CRUD透過了通用的Repository介面與類別  Service層包著商業邏輯後去使用Repository類別。
+
+    建立新專案For Service層 :
+
+        建立使用Service 回傳訊息 的介面與實作類別 IResult && Result
+        建立每個資料模型對應的Service介面 ICategoryService && IProductService
+        實作介面的Service類別 CategoryService && ProductService       
+        
+
+    移除 Repository 層下的介面與類別:
+
+        因為有了Service層 就不需要原本針對各個Model類別所擴充的Repository介面與類別
+
+        移除 ICategoryRepository && IProductRepository 介面
+
+        移除 CategoryRepository && ProductRepository 實作類別
+
+    接下來修改與設定Web的專案:
+        1. 加入Sevice專案的參考
+        2. 修改Controller
+        3. 確認
+
+    實現 DIP 依賴反轉 && IoC/DI 控制反轉 : 
+        有使用介面基本上就已經實現了依賴反轉。但你的程式是要針對介面下去寫的情形下
+
+        使用 Unity 達到 控制反轉 也就是使用功能類別時，自動找尋對應的實例(類似工廠)
+        後來使用了AUTOFAC
+            註冊(就比如 IRepository 與 Repositroy)上是沒問題。
+            但是如何使用需使用IoC的Class(如 Controller)的註冊比較有問題。
+            整體上是參考網路範例才能達到需求。
+
+            關於生命周期 :
+                InstancePerDependency
+                瞬時,嗯..就是服務對於每次請求都會返回單獨的實例
+                ADVERTISEMENT
+                InstancePerLifetimeScope
+                基於線程或者請求的單例..嗯 就是一個請求 或者一個線程 共用一個
+                SingleInstance
+                嗯..沒別的 就是單例.. 整個項目公用一個
+                InstancePerRequest
+                嗯..針對MVC的,或者說是ASP.NET的..每個請求單例
+
+                原文網址：https://kknews.cc/news/9j2qakj.html

@@ -1,0 +1,40 @@
+弱型別/強行別之常用的表單輸入欄位
+    TextBox/TextBoxFor
+    TextArea/TextAreaFor
+    CheckBox/CheckBoxFor
+    RadioButton/RadioButtonFor
+    DropDownList/DropDownListFor
+    ListBox/ListBoxFor
+    Hidden/HiddenFor
+    Password/PasswordFor
+    Display/DisplayFor
+    Label/LabelFor
+    Editor/EditorFor
+
+TextBoxFor 透過model去Binding 對應的屬性名稱
+    @Html.TextBoxFor(model => model.ProductName, new { @class = "form", @placeholder = "TextBoxFor" })
+    則會顯示
+    <input class="form" id="ProductName" name="ProductName" placeholder="TextBoxFor" type="text" value="">
+
+EditorFor
+    @Html.EditorFor(model => model.ProductName, new { htmlAttributes = new { @class = "form-control" } }) 
+    @Html.ValidationMessageFor(model => model.ProductName, "", new { @class = "text-danger" })
+
+DropdownListFor
+    @Html.DropDownList("CompanyId", null, htmlAttributes: new { @class = "form-control" })
+    在Controller中，new一個SelectList(抓取的資料,對應的編號,顯示名稱)清單，再透過ViewBag將資料帶入View做使用，所以上述的CompanyId就會抓到要使用的SelectListItem。
+    public ActionResult Create() 
+    {
+        ViewBag.CompanyId = new SelectList(db.Company, "CompanyId", "Name"); 
+        return View(); 
+    }
+
+ActionLink(文字,Action):一個文字超連結
+    @Html.ActionLink("Create New", "Create")
+    在HTML變成
+    <a href="/Products/Create">Create New</a>
+    或是要客製化(文字,Action,Controller,路由值,HtmlAttribute)
+    @Html.ActionLink("Create", "Create", "Products", null, new { @style = "font-weight:bold;font-size:2em;color:green;" })
+    
+透過@model可以綁定這個View所需要使用的Model，但一個View只能綁定一個Model
+@model IEnumerable<MVCProject.Models.Product>
